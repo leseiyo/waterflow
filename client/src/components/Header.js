@@ -11,6 +11,7 @@ export default function Header() {
               <span className="text-black">VOI</span>
               <span className="text-white bg-black ml-1 px-1 rounded">SE</span>
             </div>
+            <span className="ml-3 text-lg font-semibold text-gray-900">WaterFlow</span>
           </Link>
         </div>
       </div>
