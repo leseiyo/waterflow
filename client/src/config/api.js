@@ -6,26 +6,31 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const isProduction = process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost';
 const hasApiUrl = process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL !== 'http://localhost:5000';
 const isVercelDeployment = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app');
+const hasSupabase = process.env.REACT_APP_SUPABASE_URL && process.env.REACT_APP_SUPABASE_ANON_KEY;
 
-// Force mock mode for Vercel deployments without explicit API URL
+// Use Supabase if available, otherwise fall back to mock mode for production
 const MOCK_MODE = process.env.REACT_APP_MOCK_MODE === 'true' || 
-                  (isProduction && !hasApiUrl) || 
-                  isVercelDeployment;
+                  (isProduction && !hasApiUrl && !hasSupabase) || 
+                  (isVercelDeployment && !hasSupabase);
 
 // Debug logging
 console.log('🔧 API Config Debug:', {
   NODE_ENV: process.env.NODE_ENV,
   REACT_APP_API_URL: process.env.REACT_APP_API_URL,
   REACT_APP_MOCK_MODE: process.env.REACT_APP_MOCK_MODE,
+  REACT_APP_SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL ? 'SET' : 'NOT SET',
   isProduction,
   hasApiUrl,
+  hasSupabase,
   isVercelDeployment,
   MOCK_MODE,
   hostname: window.location.hostname,
   'API_BASE_URL': API_BASE_URL
 });
 
-if (MOCK_MODE) {
+if (hasSupabase) {
+  console.log('🗄️ SUPABASE MODE ENABLED - Using Supabase database');
+} else if (MOCK_MODE) {
   console.log('🎭 MOCK MODE ENABLED - Using mock API instead of real backend');
 } else {
   console.log('🌐 REAL API MODE - Using backend at:', API_BASE_URL);

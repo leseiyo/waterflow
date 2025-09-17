@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import API_ENDPOINTS, { MOCK_MODE, mockApi } from '../config/api';
+import { getSupabase, isSupabaseConfigured } from '../config/supabase';
 
 const AuthContext = createContext();
 
@@ -157,11 +158,31 @@ export const AuthProvider = ({ children }) => {
 
       console.log('🔐 AuthContext: Attempting login for type:', type);
       console.log('🔐 AuthContext: MOCK_MODE =', MOCK_MODE);
-      console.log('🔐 AuthContext: Will use', MOCK_MODE ? 'MOCK API' : 'REAL API');
+      console.log('🔐 AuthContext: Supabase configured =', isSupabaseConfigured());
+      
+      // Use Supabase if available
+      if (isSupabaseConfigured()) {
+        console.log('🗄️ AuthContext: Using Supabase for login');
+        const supabase = await getSupabase();
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+          toast.error(error.message);
+          return { success: false, error: error.message };
+        }
+        
+        if (data.user) {
+          setUser({ id: data.user.id, email: data.user.email });
+          safeSetItem('userType', type);
+          setUserType(type);
+          toast.success('Login successful!');
+          return { success: true };
+        }
+      }
       
       // Use mock API if in mock mode or if backend is not available
       if (MOCK_MODE) {
-        console.log('AuthContext: Using mock API for login');
+        console.log('🎭 AuthContext: Using mock API for login');
         const result = await mockApi.login(type, { email, password });
         
         if (result.success) {
@@ -231,11 +252,35 @@ export const AuthProvider = ({ children }) => {
 
       console.log('🔐 AuthContext: Attempting registration for type:', type);
       console.log('🔐 AuthContext: MOCK_MODE =', MOCK_MODE);
-      console.log('🔐 AuthContext: Will use', MOCK_MODE ? 'MOCK API' : 'REAL API');
+      console.log('🔐 AuthContext: Supabase configured =', isSupabaseConfigured());
+      
+      // Use Supabase if available
+      if (isSupabaseConfigured()) {
+        console.log('🗄️ AuthContext: Using Supabase for registration');
+        const supabase = await getSupabase();
+        const { data, error } = await supabase.auth.signUp({ 
+          email: userData.email, 
+          password: userData.password 
+        });
+        
+        if (error) {
+          toast.error(error.message);
+          return { success: false, error: error.message };
+        }
+        
+        if (data.user) {
+          // Store minimal profile locally; extend later with a public profile table
+          setUser({ id: data.user.id, email: data.user.email, name: userData.name });
+          safeSetItem('userType', type);
+          setUserType(type);
+          toast.success('Registration successful! Check your email for verification.');
+          return { success: true };
+        }
+      }
       
       // Use mock API if in mock mode or if backend is not available
       if (MOCK_MODE) {
-        console.log('AuthContext: Using mock API for registration');
+        console.log('🎭 AuthContext: Using mock API for registration');
         const result = await mockApi.register(type, userData);
         
         if (result.success) {
