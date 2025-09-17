@@ -315,17 +315,32 @@ const ConsumerDashboard = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                <Bell className="h-5 w-5 text-gray-400" />
+                <div className="flex items-center space-x-2">
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                      {notifications.filter(n => !n.read).length}
+                    </span>
+                  )}
+                  <Bell className="h-5 w-5 text-gray-400" />
+                </div>
               </div>
               <div className="space-y-3">
                 {notifications.slice(0, 3).map((notification) => (
-                  <div key={notification.id} className={`p-3 rounded-lg ${notification.read ? 'bg-gray-50' : 'bg-blue-50 border-l-4 border-blue-500'}`}>
+                  <div key={notification.id} className={`p-3 rounded-lg cursor-pointer transition-all hover:shadow-md ${notification.read ? 'bg-gray-50' : 'bg-blue-50 border-l-4 border-blue-500'}`}>
                     <p className="text-sm text-gray-900">{notification.message}</p>
                     <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
                   </div>
                 ))}
                 {notifications.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">No notifications</p>
+                  <div className="text-center py-4">
+                    <Bell className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No notifications</p>
+                  </div>
+                )}
+                {notifications.length > 3 && (
+                  <button className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    View All ({notifications.length})
+                  </button>
                 )}
               </div>
             </div>
@@ -338,31 +353,49 @@ const ConsumerDashboard = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Link
                   to="/order/new"
-                  className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="group flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-all duration-200 hover:shadow-md hover:scale-105"
                 >
-                  <Plus className="h-8 w-8 text-blue-600 mb-2" />
-                  <span className="text-sm font-medium text-blue-900">New Order</span>
+                  <div className="p-2 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
+                    <Plus className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-blue-900 mt-2">New Order</span>
+                  <span className="text-xs text-blue-600 mt-1">Place water order</span>
                 </Link>
                 <Link
                   to="/consumer/profile"
-                  className="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                  className="group flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-all duration-200 hover:shadow-md hover:scale-105"
                 >
-                  <Edit className="h-8 w-8 text-green-600 mb-2" />
-                  <span className="text-sm font-medium text-green-900">Edit Profile</span>
+                  <div className="p-2 bg-green-100 rounded-full group-hover:bg-green-200 transition-colors">
+                    <Edit className="h-6 w-6 text-green-600" />
+                  </div>
+                  <span className="text-sm font-medium text-green-900 mt-2">Edit Profile</span>
+                  <span className="text-xs text-green-600 mt-1">Update details</span>
                 </Link>
                 <button
                   onClick={() => setOrderFilter(orderFilter === 'all' ? 'pending' : 'all')}
-                  className="flex flex-col items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
+                  className={`group flex flex-col items-center p-4 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 ${
+                    orderFilter !== 'all' ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-yellow-50 hover:bg-yellow-100'
+                  }`}
                 >
-                  <Filter className="h-8 w-8 text-yellow-600 mb-2" />
-                  <span className="text-sm font-medium text-yellow-900">Filter Orders</span>
+                  <div className={`p-2 rounded-full transition-colors ${
+                    orderFilter !== 'all' ? 'bg-yellow-200 group-hover:bg-yellow-300' : 'bg-yellow-100 group-hover:bg-yellow-200'
+                  }`}>
+                    <Filter className="h-6 w-6 text-yellow-600" />
+                  </div>
+                  <span className="text-sm font-medium text-yellow-900 mt-2">Filter Orders</span>
+                  <span className="text-xs text-yellow-600 mt-1">
+                    {orderFilter === 'all' ? 'Show all' : `Showing ${orderFilter}`}
+                  </span>
                 </button>
                 <Link
                   to="/order/tracking"
-                  className="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                  className="group flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-all duration-200 hover:shadow-md hover:scale-105"
                 >
-                  <Truck className="h-8 w-8 text-purple-600 mb-2" />
-                  <span className="text-sm font-medium text-purple-900">Track Order</span>
+                  <div className="p-2 bg-purple-100 rounded-full group-hover:bg-purple-200 transition-colors">
+                    <Truck className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <span className="text-sm font-medium text-purple-900 mt-2">Track Order</span>
+                  <span className="text-xs text-purple-600 mt-1">Real-time tracking</span>
                 </Link>
               </div>
             </div>

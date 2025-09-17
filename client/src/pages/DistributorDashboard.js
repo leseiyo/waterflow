@@ -539,17 +539,32 @@ const DistributorDashboard = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                <Bell className="h-5 w-5 text-gray-400" />
+                <div className="flex items-center space-x-2">
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                      {notifications.filter(n => !n.read).length}
+                    </span>
+                  )}
+                  <Bell className="h-5 w-5 text-gray-400" />
+                </div>
               </div>
               <div className="space-y-3">
                 {notifications.slice(0, 3).map((notification) => (
-                  <div key={notification.id} className={`p-3 rounded-lg ${notification.read ? 'bg-gray-50' : 'bg-blue-50 border-l-4 border-blue-500'}`}>
+                  <div key={notification.id} className={`p-3 rounded-lg cursor-pointer transition-all hover:shadow-md ${notification.read ? 'bg-gray-50' : 'bg-blue-50 border-l-4 border-blue-500'}`}>
                     <p className="text-sm text-gray-900">{notification.message}</p>
                     <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
                   </div>
                 ))}
                 {notifications.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">No notifications</p>
+                  <div className="text-center py-4">
+                    <Bell className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No notifications</p>
+                  </div>
+                )}
+                {notifications.length > 3 && (
+                  <button className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    View All ({notifications.length})
+                  </button>
                 )}
               </div>
             </div>
