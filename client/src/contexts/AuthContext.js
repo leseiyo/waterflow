@@ -253,6 +253,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     userType,
+    token: safeGetItem('token'),
     loading,
     login,
     register,

@@ -74,7 +74,7 @@ const DistributorDashboard = () => {
     fetchPerformance();
     fetchBusinessMetrics();
     fetchAvailability();
-  }, []);
+  }, [token]); // Only depend on token to prevent infinite loop
 
   const fetchOrders = async () => {
     try {

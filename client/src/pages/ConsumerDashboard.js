@@ -36,7 +36,7 @@ const ConsumerDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchLocation, setSearchLocation] = useState('');
+  const [searchLocation] = useState('');
   const [favoriteDistributors, setFavoriteDistributors] = useState([]);
   const [orderFilter, setOrderFilter] = useState('all');
   const [analytics, setAnalytics] = useState({
@@ -49,9 +49,9 @@ const ConsumerDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const [showDistributorSearch, setShowDistributorSearch] = useState(false);
+  const [showDistributorSearch] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
-  const [selectedOrderForRating, setSelectedOrderForRating] = useState(null);
+  const [selectedOrderForRating] = useState(null);
 
   console.log('ConsumerDashboard: Component rendered');
   console.log('ConsumerDashboard: User:', user);
@@ -70,7 +70,6 @@ const ConsumerDashboard = () => {
 
   const {
     data: distributorsData,
-    loading: distributorsLoading,
     refetch: refetchDistributors
   } = useApiCache('/api/distributors/search', {
     headers: { Authorization: `Bearer ${token}` },
@@ -95,11 +94,7 @@ const ConsumerDashboard = () => {
     }
   }, [refetchDistributors]);
 
-  const handleSearchDistributors = () => {
-    if (searchLocation) {
-      fetchNearbyDistributors();
-    }
-  };
+  // Removed unused handleSearchDistributors function
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -263,7 +258,7 @@ const ConsumerDashboard = () => {
         fetchNotifications().catch(() => {});
       }, 800);
     }
-  }, [fetchOrders, fetchNearbyDistributors, fetchAnalytics, fetchNotifications, loadFavorites, token]);
+  }, [token]); // Only depend on token to prevent infinite loop
 
   const getStatusIcon = (status) => {
     switch (status) {
