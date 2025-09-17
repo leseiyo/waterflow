@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import API_ENDPOINTS from '../config/api';
-import { getSupabase, isSupabaseConfigured } from '../config/supabase';
+import API_ENDPOINTS, { MOCK_MODE, mockApi } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -156,18 +155,28 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Email and password are required' };
       }
 
-      if (isSupabaseConfigured()) {
-        const supabase = await getSupabase();
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        setUser({ id: data.user.id, email: data.user.email });
-        if (type) safeSetItem('userType', type);
-        setUserType(type || safeGetItem('userType'));
-        toast.success('Login successful!');
-        return { success: true };
+      console.log('AuthContext: Attempting login for type:', type);
+      
+      // Use mock API if in mock mode or if backend is not available
+      if (MOCK_MODE) {
+        console.log('AuthContext: Using mock API for login');
+        const result = await mockApi.login(type, { email, password });
+        
+        if (result.success) {
+          safeSetItem('token', result.token);
+          safeSetItem('userType', type);
+          safeSetItem('user', JSON.stringify(result.user));
+          setUser(result.user);
+          setUserType(type);
+          toast.success('Login successful! (Demo Mode)');
+          return { success: true };
+        } else {
+          toast.error(result.message);
+          return { success: false, error: result.message };
+        }
       }
 
-      console.log('AuthContext: Attempting login for type:', type);
+      // Try real API
       const endpoint = type === 'distributor' ? API_ENDPOINTS.DISTRIBUTOR_LOGIN : API_ENDPOINTS.CONSUMER_LOGIN;
       const response = await axios.post(endpoint, { email, password });
       const { token, user: userData } = response.data;
@@ -185,6 +194,26 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('AuthContext: Login error:', error);
+      
+      // If API fails and we're not in mock mode, try mock API as fallback
+      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
+        console.log('AuthContext: API failed, falling back to mock API');
+        try {
+          const result = await mockApi.login(type, { email, password });
+          if (result.success) {
+            safeSetItem('token', result.token);
+            safeSetItem('userType', type);
+            safeSetItem('user', JSON.stringify(result.user));
+            setUser(result.user);
+            setUserType(type);
+            toast.success('Login successful! (Demo Mode - Backend Unavailable)');
+            return { success: true };
+          }
+        } catch (mockError) {
+          console.error('Mock API also failed:', mockError);
+        }
+      }
+      
       const message = error.message || error.response?.data?.message || 'Login failed. Please check your credentials.';
       toast.error(message);
       return { success: false, error: message };
@@ -198,18 +227,29 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'All required fields must be provided' };
       }
 
-      if (isSupabaseConfigured()) {
-        const supabase = await getSupabase();
-        const { data, error } = await supabase.auth.signUp({ email: userData.email, password: userData.password });
-        if (error) throw error;
-        // Store minimal profile locally; extend later with a public profile table
-        setUser({ id: data.user.id, email: data.user.email, name: userData.name });
-        if (type) safeSetItem('userType', type);
-        setUserType(type || safeGetItem('userType'));
-        toast.success('Registration successful! Check your email for verification.');
-        return { success: true };
+      console.log('AuthContext: Attempting registration for type:', type);
+      
+      // Use mock API if in mock mode or if backend is not available
+      if (MOCK_MODE) {
+        console.log('AuthContext: Using mock API for registration');
+        const result = await mockApi.register(type, userData);
+        
+        if (result.success) {
+          const token = 'mock-jwt-token-' + Date.now();
+          safeSetItem('token', token);
+          safeSetItem('userType', type);
+          safeSetItem('user', JSON.stringify(result.user));
+          setUser(result.user);
+          setUserType(type);
+          toast.success('Registration successful! (Demo Mode)');
+          return { success: true };
+        } else {
+          toast.error(result.message);
+          return { success: false, error: result.message };
+        }
       }
 
+      // Try real API
       const endpoint = type === 'distributor' ? API_ENDPOINTS.DISTRIBUTOR_REGISTER : API_ENDPOINTS.CONSUMER_REGISTER;
       const response = await axios.post(endpoint, userData);
       const { token, user: newUser } = response.data;
@@ -227,6 +267,27 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('AuthContext: Registration error:', error);
+      
+      // If API fails and we're not in mock mode, try mock API as fallback
+      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
+        console.log('AuthContext: API failed, falling back to mock API');
+        try {
+          const result = await mockApi.register(type, userData);
+          if (result.success) {
+            const token = 'mock-jwt-token-' + Date.now();
+            safeSetItem('token', token);
+            safeSetItem('userType', type);
+            safeSetItem('user', JSON.stringify(result.user));
+            setUser(result.user);
+            setUserType(type);
+            toast.success('Registration successful! (Demo Mode - Backend Unavailable)');
+            return { success: true };
+          }
+        } catch (mockError) {
+          console.error('Mock API also failed:', mockError);
+        }
+      }
+      
       const message = error.message || error.response?.data?.message || 'Registration failed. Please try again.';
       toast.error(message);
       return { success: false, error: message };

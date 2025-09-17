@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { MOCK_MODE, mockApi } from '../config/api';
 import LazyWrapper, { 
   LazyDistributorLocationMap, 
   LazyAvailabilityManager 
@@ -91,6 +92,22 @@ const DistributorDashboard = () => {
 
   const fetchStats = async () => {
     try {
+      if (MOCK_MODE) {
+        const result = await mockApi.getProfile(token);
+        if (result.success) {
+          const mockOrders = await mockApi.getOrders(token);
+          const safeOrders = Array.isArray(mockOrders.data) ? mockOrders.data : [];
+          const totalOrders = safeOrders.length;
+          const pendingOrders = safeOrders.filter(order => order.status === 'pending').length;
+          const completedOrders = safeOrders.filter(order => order.status === 'completed').length;
+          const totalEarnings = safeOrders
+            .filter(order => order.status === 'completed')
+            .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+          setStats({ totalOrders, pendingOrders, completedOrders, totalEarnings });
+        }
+        return;
+      }
+
       const response = await axios.get('/api/distributors/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -106,6 +123,26 @@ const DistributorDashboard = () => {
       setStats({ totalOrders, pendingOrders, completedOrders, totalEarnings });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+      
+      // Fallback to mock data if API fails
+      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
+        try {
+          const result = await mockApi.getProfile(token);
+          if (result.success) {
+            const mockOrders = await mockApi.getOrders(token);
+            const safeOrders = Array.isArray(mockOrders.data) ? mockOrders.data : [];
+            const totalOrders = safeOrders.length;
+            const pendingOrders = safeOrders.filter(order => order.status === 'pending').length;
+            const completedOrders = safeOrders.filter(order => order.status === 'completed').length;
+            const totalEarnings = safeOrders
+              .filter(order => order.status === 'completed')
+              .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+            setStats({ totalOrders, pendingOrders, completedOrders, totalEarnings });
+          }
+        } catch (mockError) {
+          console.error('Mock API also failed:', mockError);
+        }
+      }
     }
   };
 
@@ -125,17 +162,45 @@ const DistributorDashboard = () => {
 
   const fetchNotifications = async () => {
     try {
+      if (MOCK_MODE) {
+        const result = await mockApi.getNotifications(token);
+        if (result.success) {
+          setNotifications(result.data);
+        }
+        return;
+      }
+
       const response = await axios.get('/api/distributors/notifications', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotifications(response.data);
     } catch (error) {
-      // Mock notifications for demo
-      setNotifications([
-        { id: 1, type: 'new_order', message: 'New order #123456 from John Doe', time: '5 minutes ago', read: false },
-        { id: 2, type: 'rating', message: 'You received a 5-star rating!', time: '1 hour ago', read: true },
-        { id: 3, type: 'reminder', message: 'Order #123450 is ready for pickup', time: '2 hours ago', read: false }
-      ]);
+      console.error('Failed to fetch notifications:', error);
+      
+      // Fallback to mock data if API fails
+      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
+        try {
+          const result = await mockApi.getNotifications(token);
+          if (result.success) {
+            setNotifications(result.data);
+          }
+        } catch (mockError) {
+          console.error('Mock API also failed:', mockError);
+          // Final fallback to hardcoded mock data
+          setNotifications([
+            { id: 1, type: 'new_order', message: 'New order #123456 from John Doe', time: '5 minutes ago', read: false },
+            { id: 2, type: 'rating', message: 'You received a 5-star rating!', time: '1 hour ago', read: true },
+            { id: 3, type: 'reminder', message: 'Order #123450 is ready for pickup', time: '2 hours ago', read: false }
+          ]);
+        }
+      } else {
+        // Mock notifications for demo
+        setNotifications([
+          { id: 1, type: 'new_order', message: 'New order #123456 from John Doe', time: '5 minutes ago', read: false },
+          { id: 2, type: 'rating', message: 'You received a 5-star rating!', time: '1 hour ago', read: true },
+          { id: 3, type: 'reminder', message: 'Order #123450 is ready for pickup', time: '2 hours ago', read: false }
+        ]);
+      }
     }
   };
 
