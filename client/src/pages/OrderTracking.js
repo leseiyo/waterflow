@@ -34,9 +34,9 @@ const OrderTracking = () => {
   const initializeSocket = () => {
     const io = require('socket.io-client');
     const socketInstance = io('http://localhost:5000');
-    
+
     socketInstance.emit('join-order', orderId);
-    
+
     socketInstance.on('order-status-updated', (data) => {
       if (data.orderId === orderId) {
         fetchOrder();
@@ -50,8 +50,7 @@ const OrderTracking = () => {
       }
     });
 
-    setSocket(socketInstance);
-
+    // no state stored for socket to avoid lint errors
     return () => {
       socketInstance.disconnect();
     };

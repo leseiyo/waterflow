@@ -251,7 +251,8 @@ const DistributorDashboard = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const filteredOrders = safeOrders.filter(order => {
     if (orderFilter === 'all') return true;
     return order.status === orderFilter;
   });
@@ -545,7 +546,7 @@ const DistributorDashboard = () => {
                       {notifications.filter(n => !n.read).length}
                     </span>
                   )}
-                  <Bell className="h-5 w-5 text-gray-400" />
+                <Bell className="h-5 w-5 text-gray-400" />
                 </div>
               </div>
               <div className="space-y-3">
