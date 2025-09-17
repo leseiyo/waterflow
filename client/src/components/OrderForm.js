@@ -30,7 +30,7 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
         deliveryDate: tomorrow.toISOString().split('T')[0]
       }));
     }
-  }, [isOpen]);
+  }, [isOpen, fetchDistributors]);
 
   const fetchDistributors = useCallback(async () => {
     try {

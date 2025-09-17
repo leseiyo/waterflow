@@ -1,9 +1,6 @@
-import React, { useState, useEffect, memo, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import useApiCache from '../hooks/useApiCache';
-import LoadingSkeleton from '../components/LoadingSkeleton';
-import OptimizedDashboardStats from '../components/OptimizedDashboardStats';
 import LazyWrapper, { 
   LazyDistributorLocationMap, 
   LazyAvailabilityManager 
@@ -18,22 +15,14 @@ import {
   Edit, 
   Truck,
   DollarSign,
-  Calendar,
   CheckCircle,
   XCircle,
   AlertCircle,
   TrendingUp,
   Users,
-  Activity,
-  BarChart3,
   RefreshCw,
   Bell,
-  Target,
-  Award,
   Zap,
-  Filter,
-  Eye,
-  MessageSquare,
   Settings
 } from 'lucide-react';
 import toast from 'react-hot-toast';

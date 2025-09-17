@@ -22,7 +22,7 @@ const DistributorSearch = ({ onDistributorSelect, selectedLocation }) => {
 
   useEffect(() => {
     applyFilters();
-  }, [distributors, searchTerm, filters]);
+  }, [applyFilters]);
 
   const fetchDistributors = async () => {
     setLoading(true);
