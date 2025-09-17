@@ -95,10 +95,11 @@ const DistributorDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Calculate stats from orders
-      const totalOrders = orders.length;
-      const pendingOrders = orders.filter(order => order.status === 'pending').length;
-      const completedOrders = orders.filter(order => order.status === 'completed').length;
-      const totalEarnings = orders
+      const safeOrders = Array.isArray(orders) ? orders : [];
+      const totalOrders = safeOrders.length;
+      const pendingOrders = safeOrders.filter(order => order.status === 'pending').length;
+      const completedOrders = safeOrders.filter(order => order.status === 'completed').length;
+      const totalEarnings = safeOrders
         .filter(order => order.status === 'completed')
         .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
 
@@ -541,7 +542,7 @@ const DistributorDashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                 <div className="flex items-center space-x-2">
-                  {notifications.filter(n => !n.read).length > 0 && (
+                  {Array.isArray(notifications) && notifications.filter(n => !n.read).length > 0 && (
                     <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
                       {notifications.filter(n => !n.read).length}
                     </span>
@@ -550,19 +551,19 @@ const DistributorDashboard = () => {
                 </div>
               </div>
               <div className="space-y-3">
-                {notifications.slice(0, 3).map((notification) => (
+                {Array.isArray(notifications) && notifications.slice(0, 3).map((notification) => (
                   <div key={notification.id} className={`p-3 rounded-lg cursor-pointer transition-all hover:shadow-md ${notification.read ? 'bg-gray-50' : 'bg-blue-50 border-l-4 border-blue-500'}`}>
                     <p className="text-sm text-gray-900">{notification.message}</p>
                     <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
                   </div>
                 ))}
-                {notifications.length === 0 && (
+                {(!Array.isArray(notifications) || notifications.length === 0) && (
                   <div className="text-center py-4">
                     <Bell className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">No notifications</p>
                   </div>
                 )}
-                {notifications.length > 3 && (
+                {Array.isArray(notifications) && notifications.length > 3 && (
                   <button className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium">
                     View All ({notifications.length})
                   </button>
