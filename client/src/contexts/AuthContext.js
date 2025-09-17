@@ -197,9 +197,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('AuthContext: Login error:', error);
       
-      // If API fails and we're not in mock mode, try mock API as fallback
-      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
-        console.log('AuthContext: API failed, falling back to mock API');
+      // Always try mock API as fallback for network errors
+      if (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED') || error.message.includes('Network Error')) {
+        console.log('🚨 AuthContext: Network error detected, trying mock API fallback');
         try {
           const result = await mockApi.login(type, { email, password });
           if (result.success) {
@@ -272,9 +272,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('AuthContext: Registration error:', error);
       
-      // If API fails and we're not in mock mode, try mock API as fallback
-      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
-        console.log('AuthContext: API failed, falling back to mock API');
+      // Always try mock API as fallback for network errors
+      if (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED') || error.message.includes('Network Error')) {
+        console.log('🚨 AuthContext: Network error detected, trying mock API fallback');
         try {
           const result = await mockApi.register(type, userData);
           if (result.success) {
