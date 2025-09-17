@@ -1,4 +1,8 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
+
+// Lazy load components
+const DistributorLocationMap = lazy(() => import('./DistributorLocationMap'));
+const AvailabilityManager = lazy(() => import('./AvailabilityManager'));
 
 export default function LazyWrapper({ component: Component, fallback = null, ...props }) {
   if (!Component) return null;
@@ -8,3 +12,12 @@ export default function LazyWrapper({ component: Component, fallback = null, ...
     </Suspense>
   );
 }
+
+// Named exports for lazy components
+export const LazyDistributorLocationMap = (props) => (
+  <LazyWrapper component={DistributorLocationMap} {...props} />
+);
+
+export const LazyAvailabilityManager = (props) => (
+  <LazyWrapper component={AvailabilityManager} {...props} />
+);

@@ -35,16 +35,6 @@ const formatCurrency = (v) => {
 };
 
 const OptimizedDashboardStats = memo(({ stats = {}, loading = false, type = 'consumer' }) => {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <LoadingSkeleton key={i} type="stats" />
-        ))}
-      </div>
-    );
-  }
-
   const cards = useMemo(() => {
     if (type === 'consumer') {
       return [
@@ -62,6 +52,16 @@ const OptimizedDashboardStats = memo(({ stats = {}, loading = false, type = 'con
       { icon: DollarSign, title: 'Earnings', value: `$${formatCurrency(stats.totalEarnings)}`, color: 'green' }
     ];
   }, [stats, type]);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <LoadingSkeleton key={i} type="stats" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
