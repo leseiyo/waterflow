@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 

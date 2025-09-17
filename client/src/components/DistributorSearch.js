@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, MapPin, Star, Clock, Filter, X } from 'lucide-react';
 import axios from 'axios';
 
@@ -36,7 +36,7 @@ const DistributorSearch = ({ onDistributorSelect, selectedLocation }) => {
     }
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = distributors.filter(distributor => {
       // Search term filter
       if (searchTerm && !distributor.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
@@ -81,7 +81,7 @@ const DistributorSearch = ({ onDistributorSelect, selectedLocation }) => {
     });
 
     setFilteredDistributors(filtered);
-  };
+  }, [distributors, searchTerm, filters, selectedLocation]);
 
   const calculateDistance = (location1, location2) => {
     const R = 6371; // Earth's radius in kilometers

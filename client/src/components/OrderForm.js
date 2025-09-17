@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Package, MapPin, Clock, DollarSign, Truck, Star, X } from 'lucide-react';
+import { Package, Star, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -32,7 +32,7 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
     }
   }, [isOpen]);
 
-  const fetchDistributors = async () => {
+  const fetchDistributors = useCallback(async () => {
     try {
       const response = await axios.get('/api/distributors', {
         headers: { Authorization: `Bearer ${token}` }
@@ -41,7 +41,7 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
     } catch (error) {
       console.error('Failed to fetch distributors:', error);
     }
-  };
+  }, [token]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
