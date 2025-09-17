@@ -1,7 +1,22 @@
 // API Configuration
 // In production, if no API_URL is set, we'll use mock data
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-const MOCK_MODE = process.env.REACT_APP_MOCK_MODE === 'true' || (!process.env.REACT_APP_API_URL && process.env.NODE_ENV === 'production');
+
+// More robust mock mode detection
+const isProduction = process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost';
+const hasApiUrl = process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL !== 'http://localhost:5000';
+const MOCK_MODE = process.env.REACT_APP_MOCK_MODE === 'true' || (isProduction && !hasApiUrl);
+
+// Debug logging
+console.log('API Config Debug:', {
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  REACT_APP_MOCK_MODE: process.env.REACT_APP_MOCK_MODE,
+  isProduction,
+  hasApiUrl,
+  MOCK_MODE,
+  hostname: window.location.hostname
+});
 
 export const API_ENDPOINTS = {
   // Authentication

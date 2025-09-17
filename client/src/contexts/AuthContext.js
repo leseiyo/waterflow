@@ -156,6 +156,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       console.log('AuthContext: Attempting login for type:', type);
+      console.log('AuthContext: MOCK_MODE =', MOCK_MODE);
       
       // Use mock API if in mock mode or if backend is not available
       if (MOCK_MODE) {
@@ -228,6 +229,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       console.log('AuthContext: Attempting registration for type:', type);
+      console.log('AuthContext: MOCK_MODE =', MOCK_MODE);
       
       // Use mock API if in mock mode or if backend is not available
       if (MOCK_MODE) {
