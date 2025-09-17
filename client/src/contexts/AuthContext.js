@@ -155,8 +155,9 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Email and password are required' };
       }
 
-      console.log('AuthContext: Attempting login for type:', type);
-      console.log('AuthContext: MOCK_MODE =', MOCK_MODE);
+      console.log('🔐 AuthContext: Attempting login for type:', type);
+      console.log('🔐 AuthContext: MOCK_MODE =', MOCK_MODE);
+      console.log('🔐 AuthContext: Will use', MOCK_MODE ? 'MOCK API' : 'REAL API');
       
       // Use mock API if in mock mode or if backend is not available
       if (MOCK_MODE) {
@@ -228,8 +229,9 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'All required fields must be provided' };
       }
 
-      console.log('AuthContext: Attempting registration for type:', type);
-      console.log('AuthContext: MOCK_MODE =', MOCK_MODE);
+      console.log('🔐 AuthContext: Attempting registration for type:', type);
+      console.log('🔐 AuthContext: MOCK_MODE =', MOCK_MODE);
+      console.log('🔐 AuthContext: Will use', MOCK_MODE ? 'MOCK API' : 'REAL API');
       
       // Use mock API if in mock mode or if backend is not available
       if (MOCK_MODE) {
