@@ -93,7 +93,8 @@ water/
 4. **Start the application**
    ```bash
    # From the root directory
-   npm run dev
+   
+   
    ```
 
    This will start both the backend server (port 5000) and frontend (port 3000).

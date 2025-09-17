@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import API_ENDPOINTS from '../config/api';
+import { getSupabase, isSupabaseConfigured } from '../config/supabase';
 
 const AuthContext = createContext();
 
@@ -74,79 +75,78 @@ export const AuthProvider = ({ children }) => {
     setUserType(null);
   };
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from Supabase session or localStorage
   useEffect(() => {
-    console.log('AuthContext: Initializing...');
-    
-    // Clear any corrupted data first
-    const token = safeGetItem('token');
-    const storedUserType = safeGetItem('userType');
-    const storedUser = safeGetItem('user');
-    
-    console.log('AuthContext: Found in localStorage:', { 
-      hasToken: !!token, 
-      hasUserType: !!storedUserType, 
-      hasUser: !!storedUser 
-    });
+    let unsub = null;
+    (async () => {
+      console.log('AuthContext: Initializing...');
+      try {
+        if (isSupabaseConfigured()) {
+          const supabase = await getSupabase();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.user) {
+            setUser({ id: session.user.id, email: session.user.email });
+            const storedType = safeGetItem('userType');
+            if (storedType) setUserType(storedType);
+            setLoading(false);
+          } else {
+            // Fallback to localStorage (legacy)
+            const token = safeGetItem('token');
+            const storedUserType = safeGetItem('userType');
+            const storedUser = safeGetItem('user');
+            if (token && storedUserType && storedUser) {
+              const parsedUser = safeJsonParse(storedUser);
+              if (parsedUser) {
+                setUser(parsedUser);
+                setUserType(storedUserType);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+              } else {
+                clearAuthData();
+              }
+            } else {
+              clearAuthData();
+            }
+            setLoading(false);
+          }
 
-    // If we have all required data, try to restore the session
-    if (token && storedUserType && storedUser) {
-      const parsedUser = safeJsonParse(storedUser);
-      
-      if (parsedUser) {
-        setUser(parsedUser);
-        setUserType(storedUserType);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        console.log('AuthContext: Successfully restored user session:', { user: parsedUser, userType: storedUserType });
-      } else {
-        console.log('AuthContext: Failed to parse user data, clearing...');
-        clearAuthData();
-      }
-    } else {
-      console.log('AuthContext: No valid session found, starting fresh');
-      clearAuthData();
-    }
-    
-    setLoading(false);
-
-    // Add global utility for debugging (development only)
-    if (process.env.NODE_ENV === 'development') {
-      window.clearAuthStorage = () => {
-        console.log('Clearing auth storage...');
-        clearAuthData();
-        console.log('Auth storage cleared!');
-      };
-      
-      window.debugAuthStorage = () => {
-        const token = safeGetItem('token');
-        const userType = safeGetItem('userType');
-        const user = safeGetItem('user');
-        
-        console.log('=== Auth Storage Debug ===');
-        console.log('Token:', token);
-        console.log('User Type:', userType);
-        console.log('User:', user);
-        
-        if (user) {
-          const parsed = safeJsonParse(user);
-          console.log('Parsed User:', parsed);
+          // Subscribe to auth state changes
+          unsub = supabase.auth.onAuthStateChange((_event, sess) => {
+            if (sess?.user) {
+              setUser({ id: sess.user.id, email: sess.user.email });
+            } else {
+              clearAuthData();
+            }
+          }).data.subscription;
+        } else {
+          // No Supabase config; use legacy behavior
+          const token = safeGetItem('token');
+          const storedUserType = safeGetItem('userType');
+          const storedUser = safeGetItem('user');
+          if (token && storedUserType && storedUser) {
+            const parsedUser = safeJsonParse(storedUser);
+            if (parsedUser) {
+              setUser(parsedUser);
+              setUserType(storedUserType);
+              axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            } else {
+              clearAuthData();
+            }
+          } else {
+            clearAuthData();
+          }
+          setLoading(false);
         }
-        
-        console.log('Current State:', { user, userType });
-        console.log('=======================');
-      };
-      
-      window.forceClearAndReload = () => {
-        console.log('Force clearing localStorage and reloading...');
-        safeClear();
-        window.location.reload();
-      };
-      
-      console.log('Debug utilities available:');
-      console.log('- window.clearAuthStorage() - Clear auth data');
-      console.log('- window.debugAuthStorage() - Show current storage state');
-      console.log('- window.forceClearAndReload() - Clear all localStorage and reload');
-    }
+      } catch (e) {
+        console.error('Auth init error:', e);
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      if (unsub) unsub.unsubscribe();
+    };
   }, []);
 
   const login = async (email, password, type) => {
@@ -156,41 +156,36 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Email and password are required' };
       }
 
+      if (isSupabaseConfigured()) {
+        const supabase = await getSupabase();
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setUser({ id: data.user.id, email: data.user.email });
+        if (type) safeSetItem('userType', type);
+        setUserType(type || safeGetItem('userType'));
+        toast.success('Login successful!');
+        return { success: true };
+      }
+
       console.log('AuthContext: Attempting login for type:', type);
       const endpoint = type === 'distributor' ? API_ENDPOINTS.DISTRIBUTOR_LOGIN : API_ENDPOINTS.CONSUMER_LOGIN;
-      console.log('AuthContext: Using endpoint:', endpoint);
-      
-      const response = await axios.post(endpoint, {
-        email,
-        password
-      });
-
-      console.log('AuthContext: Server response:', response.data);
+      const response = await axios.post(endpoint, { email, password });
       const { token, user: userData } = response.data;
-      
-      // Validate that we have the required data before storing
       if (!token || !userData) {
-        console.error('AuthContext: Invalid response data:', response.data);
         toast.error('Invalid response from server');
         return { success: false, error: 'Invalid response from server' };
       }
-      
       safeSetItem('token', token);
       safeSetItem('userType', type);
       safeSetItem('user', JSON.stringify(userData));
-      
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
       setUser(userData);
       setUserType(type);
-      
-      console.log('AuthContext: User state updated:', { user: userData, userType: type });
-      
       toast.success('Login successful!');
       return { success: true };
     } catch (error) {
       console.error('AuthContext: Login error:', error);
-      const message = error.response?.data?.message || 'Login failed. Please check your credentials.';
+      const message = error.message || error.response?.data?.message || 'Login failed. Please check your credentials.';
       toast.error(message);
       return { success: false, error: message };
     }
@@ -203,44 +198,50 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'All required fields must be provided' };
       }
 
-      console.log('AuthContext: Attempting registration for type:', type);
+      if (isSupabaseConfigured()) {
+        const supabase = await getSupabase();
+        const { data, error } = await supabase.auth.signUp({ email: userData.email, password: userData.password });
+        if (error) throw error;
+        // Store minimal profile locally; extend later with a public profile table
+        setUser({ id: data.user.id, email: data.user.email, name: userData.name });
+        if (type) safeSetItem('userType', type);
+        setUserType(type || safeGetItem('userType'));
+        toast.success('Registration successful! Check your email for verification.');
+        return { success: true };
+      }
+
       const endpoint = type === 'distributor' ? API_ENDPOINTS.DISTRIBUTOR_REGISTER : API_ENDPOINTS.CONSUMER_REGISTER;
-      console.log('AuthContext: Using endpoint:', endpoint);
-      
       const response = await axios.post(endpoint, userData);
-      
-      console.log('AuthContext: Registration response:', response.data);
       const { token, user: newUser } = response.data;
-      
-      // Validate that we have the required data before storing
       if (!token || !newUser) {
-        console.error('AuthContext: Invalid registration response:', response.data);
         toast.error('Invalid response from server');
         return { success: false, error: 'Invalid response from server' };
       }
-      
       safeSetItem('token', token);
       safeSetItem('userType', type);
       safeSetItem('user', JSON.stringify(newUser));
-      
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
       setUser(newUser);
       setUserType(type);
-      
-      console.log('AuthContext: Registration successful:', { user: newUser, userType: type });
-      
       toast.success('Registration successful!');
       return { success: true };
     } catch (error) {
       console.error('AuthContext: Registration error:', error);
-      const message = error.response?.data?.message || 'Registration failed. Please try again.';
+      const message = error.message || error.response?.data?.message || 'Registration failed. Please try again.';
       toast.error(message);
       return { success: false, error: message };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      if (isSupabaseConfigured()) {
+        const supabase = await getSupabase();
+        await supabase.auth.signOut();
+      }
+    } catch (e) {
+      console.error('Supabase signOut error:', e);
+    }
     clearAuthData();
     toast.success('Logged out successfully');
   };

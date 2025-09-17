@@ -1,3 +1,5 @@
+// For Option B (Supabase-first), most data calls will go directly to Supabase.
+// Keep API_BASE_URL for any remaining custom endpoints (or local dev).
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 export const API_ENDPOINTS = {
@@ -34,3 +36,17 @@ export const API_ENDPOINTS = {
 };
 
 export default API_ENDPOINTS; 
+
+// Supabase client (Option B)
+// Set these in a .env.local file at client/ or via Vercel environment variables
+// REACT_APP_SUPABASE_URL=your-url
+// REACT_APP_SUPABASE_ANON_KEY=your-anon-key
+export const createSupabaseClient = async () => {
+  const { createClient } = await import('@supabase/supabase-js');
+  const url = process.env.REACT_APP_SUPABASE_URL;
+  const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    console.warn('Supabase env vars missing: REACT_APP_SUPABASE_URL / REACT_APP_SUPABASE_ANON_KEY');
+  }
+  return createClient(url, anonKey);
+};
