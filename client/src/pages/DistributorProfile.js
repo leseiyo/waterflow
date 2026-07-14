@@ -583,9 +583,9 @@ const DistributorProfile = React.memo(() => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {orders.map((order) => (
-                          <tr key={order._id}>
+                          <tr key={order._id || order.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              #{order._id.slice(-6)}
+                              #{String(order._id || order.id).slice(-6)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {order.consumer?.name}
@@ -607,7 +607,7 @@ const DistributorProfile = React.memo(() => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <Link
-                                to={`/order/${order._id}/tracking`}
+                                to={`/order/${order._id || order.id}/tracking`}
                                 className="text-blue-600 hover:text-blue-900"
                               >
                                 View Details

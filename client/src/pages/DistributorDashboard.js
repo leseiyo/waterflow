@@ -79,13 +79,32 @@ const DistributorDashboard = () => {
   });
 
   useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     fetchOrders();
-    fetchStats();
     fetchNotifications();
     fetchPerformance();
     fetchBusinessMetrics();
-    fetchAvailability();
-  }, [token]); // Only depend on token to prevent infinite loop
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    setAvailability({
+      isOnline: user?.isAvailable !== false,
+      currentCapacity: businessMetrics.waterSupply.available,
+      maxCapacity: businessMetrics.waterSupply.capacity,
+      nextDelivery: '2 hours',
+    });
+  }, [user?.id, user?.isAvailable, businessMetrics.waterSupply.available, businessMetrics.waterSupply.capacity]);
+
+  useEffect(() => {
+    if (orders.length > 0 || user) {
+      setStats(computeDistributorStats(orders, user));
+    }
+  }, [orders, user]);
 
   const fetchOrders = async () => {
     if (!user?.id) return;
@@ -154,14 +173,6 @@ const DistributorDashboard = () => {
     }
   };
 
-  const fetchAvailability = async () => {
-    setAvailability({
-      isOnline: user?.isAvailable !== false,
-      currentCapacity: businessMetrics.waterSupply.available,
-      maxCapacity: businessMetrics.waterSupply.capacity,
-      nextDelivery: '2 hours',
-    });
-  };
 
   const updateAvailability = async (isOnline) => {
     try {
@@ -193,7 +204,8 @@ const DistributorDashboard = () => {
         fetchOrders(),
         fetchStats(),
         fetchNotifications(),
-        fetchPerformance()
+        fetchPerformance(),
+        fetchBusinessMetrics(),
       ]);
       toast.success('Data refreshed successfully');
     } catch (error) {
@@ -666,10 +678,12 @@ const DistributorDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredOrders.map((order) => (
-                      <tr key={order._id}>
+                    {filteredOrders.map((order) => {
+                      const orderId = order._id || order.id;
+                      return (
+                      <tr key={orderId}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          #{order._id.slice(-6)}
+                          #{String(orderId).slice(-6)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {order.consumer?.name}
@@ -693,13 +707,13 @@ const DistributorDashboard = () => {
                           {order.status === 'pending' && (
                             <div className="space-x-2">
                               <button
-                                onClick={() => handleUpdateOrderStatus(order._id, 'in-progress')}
+                                onClick={() => handleUpdateOrderStatus(orderId, 'in-progress')}
                                 className="text-blue-600 hover:text-blue-900"
                               >
                                 Accept
                               </button>
                               <button
-                                onClick={() => handleUpdateOrderStatus(order._id, 'cancelled')}
+                                onClick={() => handleUpdateOrderStatus(orderId, 'cancelled')}
                                 className="text-red-600 hover:text-red-900"
                               >
                                 Decline
@@ -708,7 +722,7 @@ const DistributorDashboard = () => {
                           )}
                           {order.status === 'in-progress' && (
                             <button
-                              onClick={() => handleUpdateOrderStatus(order._id, 'completed')}
+                              onClick={() => handleUpdateOrderStatus(orderId, 'completed')}
                               className="text-green-600 hover:text-green-900"
                             >
                               Complete
@@ -716,7 +730,8 @@ const DistributorDashboard = () => {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>

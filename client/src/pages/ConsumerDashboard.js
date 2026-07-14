@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Mail,
   MapPin,
@@ -37,6 +37,7 @@ const LazyRatingForm = lazy(() => import('../components/RatingForm'));
 
 const ConsumerDashboard = () => {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,13 +54,9 @@ const ConsumerDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const [showDistributorSearch] = useState(false);
+  const [showDistributorSearch, setShowDistributorSearch] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
-  const [selectedOrderForRating] = useState(null);
-
-  console.log('ConsumerDashboard: Component rendered');
-  console.log('ConsumerDashboard: User:', user);
-  console.log('ConsumerDashboard: Token:', token);
+  const [selectedOrderForRating, setSelectedOrderForRating] = useState(null);
 
   const fetchOrders = useCallback(async () => {
     if (!user?.id) return;
@@ -162,48 +159,36 @@ const ConsumerDashboard = () => {
   }, [orders]);
 
   useEffect(() => {
-    console.log('ConsumerDashboard: useEffect triggered');
+    if (!user?.id) {
+      loadFavorites();
+      setLoading(false);
+      return;
+    }
 
-    // Load critical data first so UI becomes interactive quickly
     const init = async () => {
       try {
-        // prioritize orders + nearby distributors
         await Promise.all([fetchOrders(), fetchNearbyDistributors()]);
       } catch (err) {
         console.error('init critical fetch failed', err);
       } finally {
-        // mark UI as ready as soon as critical data arrived
         loadFavorites();
         setLoading(false);
 
-        // run non-critical analytics & notifications in idle time / background
         const backgroundWork = () => {
-          fetchAnalytics().catch(e => console.error('fetchAnalytics failed', e));
-          fetchNotifications().catch(e => console.error('fetchNotifications failed', e));
+          fetchAnalytics().catch((e) => console.error('fetchAnalytics failed', e));
+          fetchNotifications().catch((e) => console.error('fetchNotifications failed', e));
         };
 
         if ('requestIdleCallback' in window) {
-          // schedule when browser is idle
-          // @ts-ignore
           requestIdleCallback(backgroundWork, { timeout: 2000 });
         } else {
-          // fallback: small delay so UI settles first
           setTimeout(backgroundWork, 800);
         }
       }
     };
 
-    if (token) init();
-    else {
-      loadFavorites();
-      setLoading(false);
-      // still kick off background work for non-authenticated demos if desired
-      setTimeout(() => {
-        fetchAnalytics().catch(() => {});
-        fetchNotifications().catch(() => {});
-      }, 800);
-    }
-  }, [token]); // Only depend on token to prevent infinite loop
+    init();
+  }, [user?.id, fetchOrders, fetchNearbyDistributors, loadFavorites, fetchAnalytics, fetchNotifications]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -291,8 +276,9 @@ const ConsumerDashboard = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Link
-                  to="/order/new"
+                <button
+                  type="button"
+                  onClick={() => setShowOrderForm(true)}
                   className="group flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-all duration-200 hover:shadow-md hover:scale-105"
                 >
                   <div className="p-2 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
@@ -300,7 +286,7 @@ const ConsumerDashboard = () => {
                   </div>
                   <span className="text-sm font-medium text-blue-900 mt-2">New Order</span>
                   <span className="text-xs text-blue-600 mt-1">Place water order</span>
-                </Link>
+                </button>
                 <Link
                   to="/consumer/profile"
                   className="group flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-all duration-200 hover:shadow-md hover:scale-105"
@@ -327,8 +313,16 @@ const ConsumerDashboard = () => {
                     {orderFilter === 'all' ? 'Show all' : `Showing ${orderFilter}`}
                   </span>
                 </button>
-                <Link
-                  to="/order/tracking"
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trackableOrder = orders.find((order) => order.status !== 'cancelled');
+                    if (trackableOrder) {
+                      navigate(`/order/${trackableOrder._id || trackableOrder.id}/tracking`);
+                    } else {
+                      toast.error('No orders available to track');
+                    }
+                  }}
                   className="group flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-all duration-200 hover:shadow-md hover:scale-105"
                 >
                   <div className="p-2 bg-purple-100 rounded-full group-hover:bg-purple-200 transition-colors">
@@ -336,7 +330,7 @@ const ConsumerDashboard = () => {
                   </div>
                   <span className="text-sm font-medium text-purple-900 mt-2">Track Order</span>
                   <span className="text-xs text-purple-600 mt-1">Real-time tracking</span>
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -382,11 +376,23 @@ const ConsumerDashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{((order.totalAmount ?? 0)).toFixed(2)} USD</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                         <Link
-                          to={`/order/${order._id || order.id}`}
+                          to={`/order/${order._id || order.id}/tracking`}
                           className="text-indigo-600 hover:text-indigo-900 font-medium"
                         >
-                          View
+                          Track
                         </Link>
+                        {order.status === 'completed' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOrderForRating(order);
+                              setShowRatingForm(true);
+                            }}
+                            className="ml-3 text-yellow-600 hover:text-yellow-800 font-medium"
+                          >
+                            Rate
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -435,7 +441,7 @@ const ConsumerDashboard = () => {
                     </span>
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
                       <Star className="h-4 w-4 mr-1" />
-                      {distributor.rating.toFixed(1)}
+                      {(distributor.rating ?? 0).toFixed(1)}
                     </span>
                   </div>
                   <div className="mt-4">
@@ -506,21 +512,43 @@ const ConsumerDashboard = () => {
 
       {/* Order Form Modal */}
       {showOrderForm && (
-        <LazyWrapper component={LazyOrderForm} fallback={<div className="p-6">Loading form...</div>} isOpen={showOrderForm} onClose={() => setShowOrderForm(false)} />
+        <LazyWrapper
+          component={LazyOrderForm}
+          fallback={<div className="p-6">Loading form...</div>}
+          isOpen={showOrderForm}
+          onClose={() => {
+            setShowOrderForm(false);
+            fetchOrders();
+          }}
+        />
       )}
 
       {/* Distributor Search Modal */}
       {showDistributorSearch && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <LazyWrapper component={LazyDistributorSearch} fallback={<div className="p-6">Loading search...</div>} onDistributorSelect={(d) => { /* ... */ }} selectedLocation={user?.location} />
+            <LazyWrapper
+              component={LazyDistributorSearch}
+              fallback={<div className="p-6">Loading search...</div>}
+              onDistributorSelect={() => setShowDistributorSearch(false)}
+              selectedLocation={user?.location}
+            />
           </div>
         </div>
       )}
 
       {/* Rating Form Modal */}
       {showRatingForm && (
-        <LazyWrapper component={LazyRatingForm} fallback={<div className="p-6">Loading rating...</div>} order={selectedOrderForRating} onClose={() => setShowRatingForm(false)} />
+        <LazyWrapper
+          component={LazyRatingForm}
+          fallback={<div className="p-6">Loading rating...</div>}
+          isOpen={showRatingForm}
+          order={selectedOrderForRating}
+          onClose={() => {
+            setShowRatingForm(false);
+            setSelectedOrderForRating(null);
+          }}
+        />
       )}
     </div>
   );

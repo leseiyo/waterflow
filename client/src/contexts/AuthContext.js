@@ -369,6 +369,7 @@ export const AuthProvider = ({ children }) => {
     user,
     userType,
     token: safeGetItem('token'),
+    isAuthenticated: Boolean(user),
     loading,
     login,
     register,

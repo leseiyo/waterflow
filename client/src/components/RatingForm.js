@@ -36,6 +36,11 @@ const RatingForm = ({ isOpen, onClose, order, onRatingSubmitted }) => {
       return;
     }
 
+    if (!user?.id) {
+      toast.error('Please log in to submit a rating');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -160,8 +165,15 @@ const RatingForm = ({ isOpen, onClose, order, onRatingSubmitted }) => {
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="font-medium text-gray-900 mb-2">Order Details</h3>
               <div className="text-sm text-gray-600 space-y-1">
-                <p>Order #{order._id?.slice(-6)}</p>
-                <p>{order.quantity} {order.unit} delivered on {new Date(order.deliveryDate).toLocaleDateString()}</p>
+                <p>Order #{String(order._id || order.id || '').slice(-6)}</p>
+                <p>
+                  {order.quantity} {order.unit} delivered on{' '}
+                  {order.deliveryDate
+                    ? new Date(order.deliveryDate).toLocaleDateString()
+                    : order.createdAt
+                      ? new Date(order.createdAt).toLocaleDateString()
+                      : 'N/A'}
+                </p>
                 <p>Total: ${order.totalAmount}</p>
               </div>
             </div>

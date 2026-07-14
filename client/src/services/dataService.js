@@ -151,7 +151,7 @@ export async function getDistributors() {
       .from('profiles')
       .select('*')
       .eq('user_type', 'distributor')
-      .eq('is_available', true);
+      .or('is_available.eq.true,is_available.is.null');
     if (error) throw error;
     const mapped = (data || []).map(mapProfile);
     return mapped.length ? mapped : DEMO_DISTRIBUTORS;
@@ -175,6 +175,18 @@ export async function getConsumerOrders(userId, token) {
       .eq('consumer_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
+
+    const distributorIds = [...new Set((data || []).map((row) => row.distributor_id).filter(Boolean))];
+    let distributorsById = {};
+    if (distributorIds.length) {
+      const { data: distributors, error: distributorsError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', distributorIds);
+      if (distributorsError) throw distributorsError;
+      distributorsById = Object.fromEntries((distributors || []).map((row) => [row.id, mapProfile(row)]));
+    }
+
     return (data || []).map((row) =>
       normalizeOrder({
         id: row.id,
@@ -185,6 +197,7 @@ export async function getConsumerOrders(userId, token) {
         status: row.status,
         createdAt: row.created_at,
         distributorId: row.distributor_id,
+        distributor: distributorsById[row.distributor_id] || null,
       })
     );
   }
@@ -207,6 +220,18 @@ export async function getDistributorOrders(userId, token) {
       .eq('distributor_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
+
+    const consumerIds = [...new Set((data || []).map((row) => row.consumer_id).filter(Boolean))];
+    let consumersById = {};
+    if (consumerIds.length) {
+      const { data: consumers, error: consumersError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', consumerIds);
+      if (consumersError) throw consumersError;
+      consumersById = Object.fromEntries((consumers || []).map((row) => [row.id, mapProfile(row)]));
+    }
+
     return (data || []).map((row) =>
       normalizeOrder({
         id: row.id,
@@ -217,6 +242,7 @@ export async function getDistributorOrders(userId, token) {
         status: row.status,
         createdAt: row.created_at,
         consumerId: row.consumer_id,
+        consumer: consumersById[row.consumer_id] || null,
       })
     );
   }
@@ -236,6 +262,18 @@ export async function getOrderById(orderId, token) {
     const { data, error } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle();
     if (error) throw error;
     if (!data) return null;
+
+    let distributor = null;
+    if (data.distributor_id) {
+      const { data: distributorProfile, error: distributorError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.distributor_id)
+        .maybeSingle();
+      if (distributorError) throw distributorError;
+      distributor = distributorProfile ? mapProfile(distributorProfile) : null;
+    }
+
     return normalizeOrder({
       id: data.id,
       quantity: data.quantity,
@@ -244,6 +282,8 @@ export async function getOrderById(orderId, token) {
       deliveryAddress: data.delivery_address,
       status: data.status,
       createdAt: data.created_at,
+      distributorId: data.distributor_id,
+      distributor,
     });
   }
 

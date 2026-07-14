@@ -95,6 +95,11 @@ const AvailabilityManager = ({ isOpen, onClose, onAvailabilityUpdated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!user?.id) {
+      toast.error('Please log in to update availability');
+      return;
+    }
+
     setLoading(true);
 
     try {

@@ -18,22 +18,15 @@ import './App.css';
 // Protected Route component
 const ProtectedRoute = ({ children, userType }) => {
   const { user, userType: currentUserType } = useAuth();
-  
-  console.log('ProtectedRoute: Checking access for userType:', userType);
-  console.log('ProtectedRoute: Current user:', user);
-  console.log('ProtectedRoute: Current userType:', currentUserType);
-  
+
   if (!user) {
-    console.log('ProtectedRoute: No user, redirecting to login');
     return <Navigate to="/login" replace />;
   }
-  
+
   if (userType && currentUserType !== userType) {
-    console.log('ProtectedRoute: User type mismatch, redirecting to home');
     return <Navigate to="/" replace />;
   }
-  
-  console.log('ProtectedRoute: Access granted');
+
   return children;
 };
 

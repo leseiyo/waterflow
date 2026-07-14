@@ -17,23 +17,30 @@ const OrderTracking = () => {
   const [googleMaps, setGoogleMaps] = useState(null);
 
   useEffect(() => {
-    fetchOrder();
-    if (!isSupabaseConfigured()) {
-      initializeSocket();
-    }
-    initializeMap();
-  }, [orderId]); // Only depend on orderId to prevent infinite loop
+    let cleanupSocket;
 
-  const fetchOrder = async () => {
-    try {
-      const data = await getOrderById(orderId, token);
-      setOrder(data);
-      setLoading(false);
-    } catch (error) {
-      toast.error('Failed to fetch order details');
-      setLoading(false);
+    const loadOrder = async () => {
+      try {
+        const data = await getOrderById(orderId, token);
+        setOrder(data);
+      } catch (error) {
+        toast.error('Failed to fetch order details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrder();
+    initializeMap();
+
+    if (!isSupabaseConfigured()) {
+      cleanupSocket = initializeSocket();
     }
-  };
+
+    return () => {
+      if (cleanupSocket) cleanupSocket();
+    };
+  }, [orderId, token]);
 
   const initializeSocket = () => {
     const io = require('socket.io-client');
@@ -43,7 +50,9 @@ const OrderTracking = () => {
 
     socketInstance.on('order-status-updated', (data) => {
       if (data.orderId === orderId) {
-        fetchOrder();
+        getOrderById(orderId, token)
+          .then((orderData) => setOrder(orderData))
+          .catch(() => {});
         toast.success(`Order status updated to: ${data.status}`);
       }
     });

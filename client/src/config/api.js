@@ -13,27 +13,29 @@ const MOCK_MODE = process.env.REACT_APP_MOCK_MODE === 'true' ||
                   (isProduction && !hasApiUrl && !hasSupabase) || 
                   (isVercelDeployment && !hasSupabase);
 
-// Debug logging
-console.log('🔧 API Config Debug:', {
-  NODE_ENV: process.env.NODE_ENV,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
-  REACT_APP_MOCK_MODE: process.env.REACT_APP_MOCK_MODE,
-  REACT_APP_SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL ? 'SET' : 'NOT SET',
-  isProduction,
-  hasApiUrl,
-  hasSupabase,
-  isVercelDeployment,
-  MOCK_MODE,
-  hostname: window.location.hostname,
-  'API_BASE_URL': API_BASE_URL
-});
+// Debug logging (development only)
+if (process.env.NODE_ENV === 'development') {
+  console.log('API Config:', {
+    NODE_ENV: process.env.NODE_ENV,
+    REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+    REACT_APP_MOCK_MODE: process.env.REACT_APP_MOCK_MODE,
+    REACT_APP_SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL ? 'SET' : 'NOT SET',
+    isProduction,
+    hasApiUrl,
+    hasSupabase,
+    isVercelDeployment,
+    MOCK_MODE,
+    hostname: window.location.hostname,
+    API_BASE_URL,
+  });
 
-if (hasSupabase) {
-  console.log('🗄️ SUPABASE MODE ENABLED - Using Supabase database');
-} else if (MOCK_MODE) {
-  console.log('🎭 MOCK MODE ENABLED - Using mock API instead of real backend');
-} else {
-  console.log('🌐 REAL API MODE - Using backend at:', API_BASE_URL);
+  if (hasSupabase) {
+    console.log('SUPABASE MODE ENABLED - Using Supabase database');
+  } else if (MOCK_MODE) {
+    console.log('MOCK MODE ENABLED - Using mock API instead of real backend');
+  } else {
+    console.log('REAL API MODE - Using backend at:', API_BASE_URL);
+  }
 }
 
 export const API_ENDPOINTS = {

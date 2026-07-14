@@ -50,8 +50,12 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
 
   const calculateTotal = () => {
     if (!selectedDist || !formData.quantity) return 0;
-    const pricePerUnit = parseFloat(selectedDist.pricing?.replace(/[^0-9.]/g, '')) || 2;
-    return (parseFloat(formData.quantity) * pricePerUnit).toFixed(2);
+    const pricingValue =
+      typeof selectedDist.pricing === 'string'
+        ? selectedDist.pricing
+        : String(selectedDist.pricing?.basePrice || 2);
+    const pricePerUnit = parseFloat(pricingValue.replace(/[^0-9.]/g, '')) || 2;
+    return parseFloat((parseFloat(formData.quantity) * pricePerUnit).toFixed(2));
   };
 
   const handleSubmit = async (e) => {
@@ -76,7 +80,7 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
 
     try {
       const orderData = {
-        distributorId: selectedDist._id,
+        distributorId: selectedDist._id || selectedDist.id,
         quantity: parseFloat(formData.quantity),
         unit: formData.unit,
         deliveryAddress: formData.deliveryAddress,
@@ -137,10 +141,10 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
               <div className="grid gap-3">
                 {distributors.map((distributor) => (
                   <div
-                    key={distributor._id}
+                    key={distributor._id || distributor.id}
                     onClick={() => setSelectedDist(distributor)}
                     className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedDist?._id === distributor._id
+                      (selectedDist?._id || selectedDist?.id) === (distributor._id || distributor.id)
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
