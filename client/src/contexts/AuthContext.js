@@ -3,6 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import API_ENDPOINTS, { MOCK_MODE, mockApi } from '../config/api';
 import { getSupabase, isSupabaseConfigured } from '../config/supabase';
+import { getProfile, upsertProfile } from '../services/dataService';
 
 const AuthContext = createContext();
 
@@ -87,7 +88,8 @@ export const AuthProvider = ({ children }) => {
             data: { session },
           } = await supabase.auth.getSession();
           if (session?.user) {
-            setUser({ id: session.user.id, email: session.user.email });
+            const profile = await getProfile(session.user.id);
+            setUser(profile || { id: session.user.id, email: session.user.email });
             const storedType = safeGetItem('userType');
             if (storedType) setUserType(storedType);
             setLoading(false);
@@ -112,9 +114,10 @@ export const AuthProvider = ({ children }) => {
           }
 
           // Subscribe to auth state changes
-          unsub = supabase.auth.onAuthStateChange((_event, sess) => {
+          unsub = supabase.auth.onAuthStateChange(async (_event, sess) => {
             if (sess?.user) {
-              setUser({ id: sess.user.id, email: sess.user.email });
+              const profile = await getProfile(sess.user.id);
+              setUser(profile || { id: sess.user.id, email: sess.user.email });
             } else {
               clearAuthData();
             }
@@ -172,7 +175,8 @@ export const AuthProvider = ({ children }) => {
         }
         
         if (data.user) {
-          setUser({ id: data.user.id, email: data.user.email });
+          const profile = await getProfile(data.user.id);
+          setUser(profile || { id: data.user.id, email: data.user.email });
           safeSetItem('userType', type);
           setUserType(type);
           toast.success('Login successful!');
@@ -269,8 +273,8 @@ export const AuthProvider = ({ children }) => {
         }
         
         if (data.user) {
-          // Store minimal profile locally; extend later with a public profile table
-          setUser({ id: data.user.id, email: data.user.email, name: userData.name });
+          const profile = await upsertProfile(data.user.id, userData, type);
+          setUser(profile || { id: data.user.id, email: data.user.email, name: userData.name });
           safeSetItem('userType', type);
           setUserType(type);
           toast.success('Registration successful! Check your email for verification.');

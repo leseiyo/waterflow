@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Star } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
+import { submitRating } from '../services/dataService';
 
 const RatingForm = ({ isOpen, onClose, order, onRatingSubmitted }) => {
+  const { user, token } = useAuth();
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [review, setReview] = useState('');
@@ -38,24 +40,20 @@ const RatingForm = ({ isOpen, onClose, order, onRatingSubmitted }) => {
 
     try {
       const ratingData = {
-        orderId: order._id,
-        distributorId: order.distributor._id,
+        orderId: order._id || order.id,
+        distributorId: order.distributor?._id || order.distributor?.id || order.distributorId,
         rating: rating,
         review: review,
         tags: selectedTags
       };
 
-      const response = await axios.post('/api/ratings', ratingData, {
-        headers: { 
-          Authorization: `Bearer ${localStorage.getItem('token')}` 
-        }
-      });
+      const result = await submitRating(ratingData, user?.id, token);
 
       toast.success('Thank you for your feedback!');
       onClose();
       
       if (onRatingSubmitted) {
-        onRatingSubmitted(response.data);
+        onRatingSubmitted(result);
       }
 
       // Reset form

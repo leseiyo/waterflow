@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Package, Star, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import { getDistributors, createOrder } from '../services/dataService';
 
 const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
   const { user, token } = useAuth();
@@ -19,10 +19,18 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
   const [distributors, setDistributors] = useState([]);
   const [selectedDist, setSelectedDist] = useState(selectedDistributor || null);
 
+  const fetchDistributors = useCallback(async () => {
+    try {
+      const data = await getDistributors();
+      setDistributors(data);
+    } catch (error) {
+      console.error('Failed to fetch distributors:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       fetchDistributors();
-      // Set default delivery date to tomorrow
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       setFormData(prev => ({
@@ -31,17 +39,6 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
       }));
     }
   }, [isOpen, fetchDistributors]);
-
-  const fetchDistributors = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/distributors', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setDistributors(response.data);
-    } catch (error) {
-      console.error('Failed to fetch distributors:', error);
-    }
-  }, [token]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -65,6 +62,11 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
       return;
     }
 
+    if (!user?.id) {
+      toast.error('Please log in to place an order');
+      return;
+    }
+
     if (!formData.quantity || !formData.deliveryAddress) {
       toast.error('Please fill in all required fields');
       return;
@@ -85,9 +87,7 @@ const OrderForm = ({ isOpen, onClose, selectedDistributor }) => {
         totalAmount: calculateTotal()
       };
 
-      const response = await axios.post('/api/orders', orderData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await createOrder(orderData, user.id, token);
 
       toast.success('Order placed successfully!');
       onClose();

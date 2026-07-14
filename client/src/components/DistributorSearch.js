@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, MapPin, Star, Clock, Filter, X } from 'lucide-react';
-import axios from 'axios';
+import { getDistributors } from '../services/dataService';
 
 const DistributorSearch = ({ onDistributorSelect, selectedLocation }) => {
   const [distributors, setDistributors] = useState([]);
@@ -27,8 +27,8 @@ const DistributorSearch = ({ onDistributorSelect, selectedLocation }) => {
   const fetchDistributors = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/distributors');
-      setDistributors(response.data);
+      const data = await getDistributors();
+      setDistributors(data);
     } catch (error) {
       console.error('Failed to fetch distributors:', error);
     } finally {

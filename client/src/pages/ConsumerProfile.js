@@ -18,7 +18,7 @@ import {
   Truck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import { getConsumerOrders, saveProfile } from '../services/dataService';
 
 const ConsumerProfile = React.memo(() => {
   const { user, token, updateUser } = useAuth();
@@ -40,15 +40,14 @@ const ConsumerProfile = React.memo(() => {
   });
 
   const fetchOrders = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const response = await axios.get('/api/orders/consumer/orders', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setOrders(response.data);
+      const data = await getConsumerOrders(user.id, token);
+      setOrders(data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
-  }, [token]);
+  }, [user?.id, token]);
 
   useEffect(() => {
     fetchOrders();
@@ -76,11 +75,8 @@ const ConsumerProfile = React.memo(() => {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const response = await axios.put('/api/consumers/profile', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      updateUser(response.data);
+      const updated = await saveProfile(user.id, formData, 'consumer', token);
+      updateUser(updated);
       setIsEditing(false);
       toast.success('Profile updated successfully!');
     } catch (error) {

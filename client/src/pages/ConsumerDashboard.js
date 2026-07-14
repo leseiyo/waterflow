@@ -22,8 +22,12 @@ import OptimizedDashboardStats from '../components/OptimizedDashboardStats';
 import LazyWrapper from '../components/LazyWrapper';
 
 import { useAuth } from '../contexts/AuthContext';
-import useApiCache from '../hooks/useApiCache';
-import axios from 'axios';
+import {
+  getConsumerOrders,
+  getDistributors,
+  computeConsumerAnalytics,
+  getMockConsumerNotifications,
+} from '../services/dataService';
 import toast from 'react-hot-toast';
 
 // lazy load placeholders (optional)
@@ -57,87 +61,34 @@ const ConsumerDashboard = () => {
   console.log('ConsumerDashboard: User:', user);
   console.log('ConsumerDashboard: Token:', token);
 
-  // Optimized data fetching with caching
-  const {
-    data: ordersData,
-    loading: ordersLoading,
-    refetch: refetchOrders
-  } = useApiCache('/api/orders/consumer/orders', {
-    headers: { Authorization: `Bearer ${token}` },
-    cacheKey: `orders-${user?.id}`,
-    enabled: !!token
-  });
-
-  const {
-    data: distributorsData,
-    refetch: refetchDistributors
-  } = useApiCache('/api/distributors/search', {
-    headers: { Authorization: `Bearer ${token}` },
-    params: { location: user?.address || searchLocation },
-    cacheKey: `distributors-${user?.address || searchLocation}`,
-    enabled: !!token
-  });
-
   const fetchOrders = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      if (refetchOrders) await refetchOrders();
+      const data = await getConsumerOrders(user.id, token);
+      setOrders(data);
     } catch (error) {
       console.error('fetchOrders error', error);
     }
-  }, [refetchOrders]);
+  }, [user?.id, token]);
 
   const fetchNearbyDistributors = useCallback(async () => {
     try {
-      if (refetchDistributors) await refetchDistributors();
+      const data = await getDistributors();
+      setDistributors(data);
     } catch (error) {
       console.error('fetchNearbyDistributors error', error);
     }
-  }, [refetchDistributors]);
+  }, []);
 
   // Removed unused handleSearchDistributors function
 
   const fetchAnalytics = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/consumers/analytics', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAnalytics(response.data);
-    } catch (error) {
-      // Calculate basic analytics from orders if API not available
-      const totalSpent = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-      const averageOrderValue = orders.length > 0 ? totalSpent / orders.length : 0;
-      const completedOrders = orders.filter(order => order.status === 'completed');
-      const monthlyOrders = completedOrders.filter(order => {
-        const orderDate = new Date(order.createdAt);
-        const now = new Date();
-        return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-      });
-
-      setAnalytics({
-        totalSpent,
-        averageOrderValue,
-        monthlyTrend: monthlyOrders.length,
-        topDistributor: null,
-        orderFrequency: orders.length
-      });
-    }
-  }, [token, orders]);
+    setAnalytics(computeConsumerAnalytics(orders));
+  }, [orders]);
 
   const fetchNotifications = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/consumers/notifications', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications(response.data);
-    } catch (error) {
-      // Mock notifications for demo
-      setNotifications([
-        { id: 1, type: 'order_update', message: 'Your order #123456 has been delivered', time: '2 hours ago', read: false },
-        { id: 2, type: 'promotion', message: '20% off your next order with AquaPure', time: '1 day ago', read: true },
-        { id: 3, type: 'reminder', message: "Don't forget to rate your recent delivery", time: '2 days ago', read: true }
-      ]);
-    }
-  }, [token]);
+    setNotifications(getMockConsumerNotifications());
+  }, []);
 
   const loadFavorites = useCallback(() => {
     const favorites = JSON.parse(localStorage.getItem('favoriteDistributors') || '[]');
@@ -203,18 +154,12 @@ const ConsumerDashboard = () => {
     };
   }, [orders]);
 
-  // Update local state when cached data changes
+  // Update analytics when orders change
   useEffect(() => {
-    if (ordersData) {
-      setOrders(ordersData);
+    if (orders.length > 0) {
+      setAnalytics(computeConsumerAnalytics(orders));
     }
-  }, [ordersData]);
-
-  useEffect(() => {
-    if (distributorsData) {
-      setDistributors(distributorsData);
-    }
-  }, [distributorsData]);
+  }, [orders]);
 
   useEffect(() => {
     console.log('ConsumerDashboard: useEffect triggered');
@@ -302,7 +247,7 @@ const ConsumerDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <OptimizedDashboardStats stats={dashboardStats} loading={ordersLoading} type="consumer" />
+        <OptimizedDashboardStats stats={dashboardStats} loading={loading} type="consumer" />
         {/* Notifications & Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Notifications */}

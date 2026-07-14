@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
+import { saveAvailabilitySettings } from '../services/dataService';
 
 const AvailabilityManager = ({ isOpen, onClose, onAvailabilityUpdated }) => {
+  const { user, token } = useAuth();
   const [availability, setAvailability] = useState({
     isOnline: false,
     workingHours: {
@@ -96,17 +98,13 @@ const AvailabilityManager = ({ isOpen, onClose, onAvailabilityUpdated }) => {
     setLoading(true);
 
     try {
-      const response = await axios.put('/api/distributors/availability', availability, {
-        headers: { 
-          Authorization: `Bearer ${localStorage.getItem('token')}` 
-        }
-      });
+      const result = await saveAvailabilitySettings(user.id, availability, token);
 
       toast.success('Availability updated successfully!');
       onClose();
       
       if (onAvailabilityUpdated) {
-        onAvailabilityUpdated(response.data);
+        onAvailabilityUpdated(result);
       }
 
     } catch (error) {

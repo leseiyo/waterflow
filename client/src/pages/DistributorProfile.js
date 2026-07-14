@@ -19,7 +19,7 @@ import {
   Building
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import { getDistributorOrders, saveProfile } from '../services/dataService';
 
 const DistributorProfile = React.memo(() => {
   const { user, token, updateUser } = useAuth();
@@ -50,15 +50,14 @@ const DistributorProfile = React.memo(() => {
   });
 
   const fetchOrders = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const response = await axios.get('/api/orders/distributor/orders', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setOrders(response.data);
+      const data = await getDistributorOrders(user.id, token);
+      setOrders(data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
-  }, [token]);
+  }, [user?.id, token]);
 
   useEffect(() => {
     fetchOrders();
@@ -86,11 +85,8 @@ const DistributorProfile = React.memo(() => {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const response = await axios.put('/api/distributors/profile', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      updateUser(response.data);
+      const updated = await saveProfile(user.id, formData, 'distributor', token);
+      updateUser(updated);
       setIsEditing(false);
       toast.success('Profile updated successfully!');
     } catch (error) {

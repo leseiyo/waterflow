@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { MOCK_MODE, mockApi } from '../config/api';
+import {
+  getDistributorOrders,
+  getDistributorProfile,
+  updateOrderStatus as updateOrderStatusApi,
+  updateAvailability as updateAvailabilityApi,
+  updateWaterSupply as updateWaterSupplyApi,
+  computeDistributorStats,
+  mapProfileToBusinessMetrics,
+  getMockDistributorNotifications,
+  getMockDistributorPerformance,
+} from '../services/dataService';
 import LazyWrapper, { 
   LazyDistributorLocationMap, 
   LazyAvailabilityManager 
@@ -27,7 +38,6 @@ import {
   Settings
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
 
 const DistributorDashboard = () => {
   const { user, token } = useAuth();
@@ -78,11 +88,11 @@ const DistributorDashboard = () => {
   }, [token]); // Only depend on token to prevent infinite loop
 
   const fetchOrders = async () => {
+    if (!user?.id) return;
     try {
-      const response = await axios.get('/api/orders/distributor/orders', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setOrders(response.data);
+      const data = await getDistributorOrders(user.id, token);
+      setOrders(data);
+      setStats(computeDistributorStats(data, user));
     } catch (error) {
       toast.error('Failed to fetch orders');
     } finally {
@@ -96,65 +106,21 @@ const DistributorDashboard = () => {
         const result = await mockApi.getProfile(token);
         if (result.success) {
           const mockOrders = await mockApi.getOrders(token);
-          const safeOrders = Array.isArray(mockOrders.data) ? mockOrders.data : [];
-          const totalOrders = safeOrders.length;
-          const pendingOrders = safeOrders.filter(order => order.status === 'pending').length;
-          const completedOrders = safeOrders.filter(order => order.status === 'completed').length;
-          const totalEarnings = safeOrders
-            .filter(order => order.status === 'completed')
-            .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-          setStats({ totalOrders, pendingOrders, completedOrders, totalEarnings });
+          setStats(computeDistributorStats(mockOrders.data || [], result.data));
         }
         return;
       }
-
-      const response = await axios.get('/api/distributors/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // Calculate stats from orders
-      const safeOrders = Array.isArray(orders) ? orders : [];
-      const totalOrders = safeOrders.length;
-      const pendingOrders = safeOrders.filter(order => order.status === 'pending').length;
-      const completedOrders = safeOrders.filter(order => order.status === 'completed').length;
-      const totalEarnings = safeOrders
-        .filter(order => order.status === 'completed')
-        .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-
-      setStats({ totalOrders, pendingOrders, completedOrders, totalEarnings });
+      setStats(computeDistributorStats(orders, user));
     } catch (error) {
       console.error('Failed to fetch stats:', error);
-      
-      // Fallback to mock data if API fails
-      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
-        try {
-          const result = await mockApi.getProfile(token);
-          if (result.success) {
-            const mockOrders = await mockApi.getOrders(token);
-            const safeOrders = Array.isArray(mockOrders.data) ? mockOrders.data : [];
-            const totalOrders = safeOrders.length;
-            const pendingOrders = safeOrders.filter(order => order.status === 'pending').length;
-            const completedOrders = safeOrders.filter(order => order.status === 'completed').length;
-            const totalEarnings = safeOrders
-              .filter(order => order.status === 'completed')
-              .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-            setStats({ totalOrders, pendingOrders, completedOrders, totalEarnings });
-          }
-        } catch (mockError) {
-          console.error('Mock API also failed:', mockError);
-        }
-      }
     }
   };
 
-  const updateOrderStatus = async (orderId, status) => {
+  const handleUpdateOrderStatus = async (orderId, status) => {
     try {
-      await axios.patch(`/api/orders/${orderId}/status`, 
-        { status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await updateOrderStatusApi(orderId, status, token);
       toast.success(`Order ${status}`);
       fetchOrders();
-      fetchStats();
     } catch (error) {
       toast.error('Failed to update order status');
     }
@@ -169,55 +135,54 @@ const DistributorDashboard = () => {
         }
         return;
       }
-
-      const response = await axios.get('/api/distributors/notifications', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications(response.data);
+      setNotifications(getMockDistributorNotifications());
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-      
-      // Fallback to mock data if API fails
-      if (!MOCK_MODE && (error.code === 'ERR_NETWORK' || error.message.includes('CONNECTION_REFUSED'))) {
-        try {
-          const result = await mockApi.getNotifications(token);
-          if (result.success) {
-            setNotifications(result.data);
-          }
-        } catch (mockError) {
-          console.error('Mock API also failed:', mockError);
-          // Final fallback to hardcoded mock data
-          setNotifications([
-            { id: 1, type: 'new_order', message: 'New order #123456 from John Doe', time: '5 minutes ago', read: false },
-            { id: 2, type: 'rating', message: 'You received a 5-star rating!', time: '1 hour ago', read: true },
-            { id: 3, type: 'reminder', message: 'Order #123450 is ready for pickup', time: '2 hours ago', read: false }
-          ]);
-        }
-      } else {
-        // Mock notifications for demo
-        setNotifications([
-          { id: 1, type: 'new_order', message: 'New order #123456 from John Doe', time: '5 minutes ago', read: false },
-          { id: 2, type: 'rating', message: 'You received a 5-star rating!', time: '1 hour ago', read: true },
-          { id: 3, type: 'reminder', message: 'Order #123450 is ready for pickup', time: '2 hours ago', read: false }
-        ]);
-      }
+      setNotifications(getMockDistributorNotifications());
     }
   };
 
   const fetchPerformance = async () => {
+    setPerformance(getMockDistributorPerformance());
+  };
+
+  const fetchBusinessMetrics = async () => {
     try {
-      const response = await axios.get('/api/distributors/performance', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPerformance(response.data);
+      const profile = user?.id ? await getDistributorProfile(user.id, token) : null;
+      setBusinessMetrics(mapProfileToBusinessMetrics(profile || user));
     } catch (error) {
-      // Mock performance data
-      setPerformance({
-        deliveryTime: 45, // minutes
-        customerSatisfaction: 4.8,
-        repeatCustomers: 75, // percentage
-        responseTime: 5 // minutes
-      });
+      console.error('Failed to fetch business metrics:', error);
+    }
+  };
+
+  const fetchAvailability = async () => {
+    setAvailability({
+      isOnline: user?.isAvailable !== false,
+      currentCapacity: businessMetrics.waterSupply.available,
+      maxCapacity: businessMetrics.waterSupply.capacity,
+      nextDelivery: '2 hours',
+    });
+  };
+
+  const updateAvailability = async (isOnline) => {
+    try {
+      await updateAvailabilityApi(user.id, isOnline, token);
+      setAvailability((prev) => ({ ...prev, isOnline }));
+      toast.success(`Status updated: ${isOnline ? 'Online' : 'Offline'}`);
+    } catch (error) {
+      toast.error('Failed to update availability');
+    }
+  };
+
+  const updateWaterSupply = async (availableQuantity) => {
+    try {
+      await updateWaterSupplyApi(user.id, availableQuantity, token);
+      setBusinessMetrics((prev) => ({
+        ...prev,
+        waterSupply: { ...prev.waterSupply, available: availableQuantity },
+      }));
+      toast.success('Water supply updated');
+    } catch (error) {
+      toast.error('Failed to update water supply');
     }
   };
 
@@ -238,84 +203,6 @@ const DistributorDashboard = () => {
     }
   };
 
-  const fetchBusinessMetrics = async () => {
-    try {
-      const response = await axios.get('/api/distributors/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const distributor = response.data;
-      
-      setBusinessMetrics({
-        waterSupply: {
-          available: distributor.waterSupply?.availableQuantity || 0,
-          capacity: distributor.waterSupply?.capacity || 0,
-          unit: distributor.waterSupply?.unit || 'liters'
-        },
-        workingHours: {
-          start: distributor.workingHours?.start || '08:00',
-          end: distributor.workingHours?.end || '18:00',
-          days: distributor.workingHours?.daysOfWeek || []
-        },
-        transportMode: distributor.transportMode || 'truck',
-        pricing: {
-          basePrice: distributor.pricing?.basePrice || 0,
-          currency: distributor.pricing?.currency || 'USD',
-          perUnit: distributor.pricing?.perUnit || 'liter',
-          deliveryFee: distributor.pricing?.deliveryFee || 0
-        },
-        isActive: distributor.isActive || false,
-        isVerified: distributor.isVerified || false
-      });
-    } catch (error) {
-      console.error('Failed to fetch business metrics:', error);
-    }
-  };
-
-  const fetchAvailability = async () => {
-    try {
-      const response = await axios.get('/api/distributors/availability', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAvailability(response.data);
-    } catch (error) {
-      // Mock availability data
-      setAvailability({
-        isOnline: true,
-        currentCapacity: businessMetrics.waterSupply.available,
-        maxCapacity: businessMetrics.waterSupply.capacity,
-        nextDelivery: '2 hours'
-      });
-    }
-  };
-
-  const updateAvailability = async (isOnline) => {
-    try {
-      await axios.patch('/api/distributors/availability', 
-        { isOnline },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setAvailability(prev => ({ ...prev, isOnline }));
-      toast.success(`Status updated: ${isOnline ? 'Online' : 'Offline'}`);
-    } catch (error) {
-      toast.error('Failed to update availability');
-    }
-  };
-
-  const updateWaterSupply = async (availableQuantity) => {
-    try {
-      await axios.patch('/api/distributors/supply', 
-        { availableQuantity },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setBusinessMetrics(prev => ({
-        ...prev,
-        waterSupply: { ...prev.waterSupply, available: availableQuantity }
-      }));
-      toast.success('Water supply updated');
-    } catch (error) {
-      toast.error('Failed to update water supply');
-    }
-  };
 
   const safeOrders = Array.isArray(orders) ? orders : [];
   const filteredOrders = safeOrders.filter(order => {
@@ -806,13 +693,13 @@ const DistributorDashboard = () => {
                           {order.status === 'pending' && (
                             <div className="space-x-2">
                               <button
-                                onClick={() => updateOrderStatus(order._id, 'in-progress')}
+                                onClick={() => handleUpdateOrderStatus(order._id, 'in-progress')}
                                 className="text-blue-600 hover:text-blue-900"
                               >
                                 Accept
                               </button>
                               <button
-                                onClick={() => updateOrderStatus(order._id, 'cancelled')}
+                                onClick={() => handleUpdateOrderStatus(order._id, 'cancelled')}
                                 className="text-red-600 hover:text-red-900"
                               >
                                 Decline
@@ -821,7 +708,7 @@ const DistributorDashboard = () => {
                           )}
                           {order.status === 'in-progress' && (
                             <button
-                              onClick={() => updateOrderStatus(order._id, 'completed')}
+                              onClick={() => handleUpdateOrderStatus(order._id, 'completed')}
                               className="text-green-600 hover:text-green-900"
                             >
                               Complete

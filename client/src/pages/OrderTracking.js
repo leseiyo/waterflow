@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import { getOrderById } from '../services/dataService';
+import { isSupabaseConfigured } from '../config/supabase';
 import toast from 'react-hot-toast';
 import { MapPin, Package, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Loader } from '@googlemaps/js-api-loader';
 
 const OrderTracking = () => {
   const { orderId } = useParams();
+  const { token } = useAuth();
   const [order, setOrder] = useState(null);
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState({});
@@ -16,14 +18,16 @@ const OrderTracking = () => {
 
   useEffect(() => {
     fetchOrder();
-    initializeSocket();
+    if (!isSupabaseConfigured()) {
+      initializeSocket();
+    }
     initializeMap();
   }, [orderId]); // Only depend on orderId to prevent infinite loop
 
   const fetchOrder = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/orders/${orderId}`);
-      setOrder(response.data);
+      const data = await getOrderById(orderId, token);
+      setOrder(data);
       setLoading(false);
     } catch (error) {
       toast.error('Failed to fetch order details');
@@ -214,7 +218,7 @@ const OrderTracking = () => {
               <h2 className="text-lg font-semibold mb-4">Live Tracking</h2>
               <div id="map" className="w-full h-96 rounded-lg"></div>
               
-              {order.tracking.distance > 0 && (
+              {order.tracking?.distance > 0 && (
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                   <div className="flex items-center">
                     <MapPin className="h-5 w-5 text-blue-600 mr-2" />
@@ -324,16 +328,22 @@ const OrderTracking = () => {
                     <span className="text-gray-600">Name:</span>
                     <span className="ml-2 font-medium">{order.distributor.name}</span>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Rating:</span>
-                    <span className="ml-2 font-medium">
-                      {order.distributor.rating.average.toFixed(1)} ⭐ ({order.distributor.rating.count} reviews)
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Phone:</span>
-                    <span className="ml-2 font-medium">{order.distributor.contactInfo.phone}</span>
-                  </div>
+                  {order.distributor.rating && (
+                    <div>
+                      <span className="text-gray-600">Rating:</span>
+                      <span className="ml-2 font-medium">
+                        {typeof order.distributor.rating === 'object'
+                          ? `${order.distributor.rating.average?.toFixed(1)} ⭐ (${order.distributor.rating.count} reviews)`
+                          : `${Number(order.distributor.rating).toFixed(1)} ⭐`}
+                      </span>
+                    </div>
+                  )}
+                  {order.distributor.phone && (
+                    <div>
+                      <span className="text-gray-600">Phone:</span>
+                      <span className="ml-2 font-medium">{order.distributor.phone}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
